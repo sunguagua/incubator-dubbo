@@ -40,6 +40,7 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
     
     protected static class WeightedRoundRobin {
         private int weight;
+        // 并发环境下某个 Invoker 会被同时选中, 表示被所有线程选中的权重总和, 例如:某个节点权重 100, 被四个线程同时选中, 则变为 400
         private AtomicLong current = new AtomicLong(0);
         private long lastUpdate;
         public int getWeight() {

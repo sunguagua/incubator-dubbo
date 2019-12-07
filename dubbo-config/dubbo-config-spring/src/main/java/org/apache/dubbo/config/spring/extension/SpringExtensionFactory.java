@@ -36,6 +36,7 @@ import java.util.Set;
 
 /**
  * SpringExtensionFactory
+ *
  */
 public class SpringExtensionFactory implements ExtensionFactory {
     private static final Logger logger = LoggerFactory.getLogger(SpringExtensionFactory.class);

@@ -91,6 +91,7 @@ import static org.apache.dubbo.common.utils.UrlUtils.classifyUrls;
 
 /**
  * RegistryProtocol
+ *
  */
 public class RegistryProtocol implements Protocol {
 
@@ -167,8 +168,10 @@ public class RegistryProtocol implements Protocol {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        // zookeeper://172.16.11.118:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F192.168.199.157%3A20002%2Fcom.dubbo.service.async.AsyncService%3Fanyhost%3Dtrue%26application%3Ddubbo-demo-provider%26bean.name%3Dcom.dubbo.service.async.AsyncService%26bind.ip%3D192.168.199.157%26bind.port%3D20002%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.dubbo.service.async.AsyncService%26methods%3DsayHello%2Cgoodbye%2CsayHello2%26pid%3D46412%26release%3D2.7.0%26revision%3D1.0-SNAPSHOT%26sayHello2.async%3Dtrue%26side%3Dprovider%26timestamp%3D1565103966382&group=dev&pid=46412&release=2.7.0&timestamp=1565103966374
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
+        // dubbo://192.168.199.157:20002/com.dubbo.service.async.AsyncService?anyhost=true&application=dubbo-demo-provider&bean.name=com.dubbo.service.async.AsyncService&bind.ip=192.168.199.157&bind.port=20002&dubbo=2.0.2&generic=false&interface=com.dubbo.service.async.AsyncService&methods=sayHello,goodbye,sayHello2&pid=46412&release=2.7.0&revision=1.0-SNAPSHOT&sayHello2.async=true&side=provider&timestamp=1565103966382
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
@@ -184,6 +187,7 @@ public class RegistryProtocol implements Protocol {
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
+        // 获取 Registry , 重点
         final Registry registry = getRegistry(originInvoker);
         final URL registeredProviderUrl = getRegisteredProviderUrl(providerUrl, registryUrl);
         ProviderInvokerWrapper<T> providerInvokerWrapper = ProviderConsumerRegTable.registerProvider(originInvoker,
@@ -191,6 +195,7 @@ public class RegistryProtocol implements Protocol {
         //to judge if we need to delay publish
         boolean register = registeredProviderUrl.getParameter("register", true);
         if (register) {
+            // 服务暴露之后, 注册服务元数据
             register(registryUrl, registeredProviderUrl);
             providerInvokerWrapper.setReg(true);
         }
@@ -346,17 +351,23 @@ public class RegistryProtocol implements Protocol {
 
     @Override
     @SuppressWarnings("unchecked")
+    /**
+     * 通过注册中心消费, 重要
+     */
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+        // 设置具体注册中心协议, 比如 Zookeeper
         url = URLBuilder.from(url)
                 .setProtocol(url.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY))
                 .removeParameter(REGISTRY_KEY)
                 .build();
+        // 创建具体注册中心实例
         Registry registry = registryFactory.getRegistry(url);
         if (RegistryService.class.equals(type)) {
             return proxyFactory.getInvoker((T) registry, type, url);
         }
 
         // group="a,b" or group="*"
+        // 根据配置处理多分组结果聚合
         Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(REFER_KEY));
         String group = qs.get(Constants.GROUP_KEY);
         if (group != null && group.length() > 0) {
@@ -364,6 +375,7 @@ public class RegistryProtocol implements Protocol {
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
         }
+        // 处理订阅数据并通过 Cluster 合并多个 Invoker
         return doRefer(cluster, registry, type, url);
     }
 
@@ -372,6 +384,7 @@ public class RegistryProtocol implements Protocol {
     }
 
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        // 消费核心关键, 持有实际 Invoker 和接收订阅通知
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
         directory.setRegistry(registry);
         directory.setProtocol(protocol);

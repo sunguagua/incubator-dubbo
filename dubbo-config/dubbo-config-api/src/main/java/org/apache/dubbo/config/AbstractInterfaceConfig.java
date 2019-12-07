@@ -235,6 +235,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
 
     void startConfigCenter() {
+        // 配置中心
         if (configCenter == null) {
             ConfigManager.getInstance().getConfigCenter().ifPresent(cc -> this.configCenter = cc);
         }
@@ -293,6 +294,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         // check && override if necessary
         List<URL> registryList = new ArrayList<URL>();
         if (CollectionUtils.isNotEmpty(registries)) {
+            // registries 配置
             for (RegistryConfig config : registries) {
                 String address = config.getAddress();
                 if (StringUtils.isEmpty(address)) {

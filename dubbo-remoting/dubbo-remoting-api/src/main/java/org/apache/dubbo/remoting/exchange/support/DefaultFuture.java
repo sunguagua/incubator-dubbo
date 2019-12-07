@@ -43,6 +43,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * DefaultFuture.
+ *
  */
 public class DefaultFuture implements ResponseFuture {
 
@@ -50,6 +51,9 @@ public class DefaultFuture implements ResponseFuture {
 
     private static final Map<Long, Channel> CHANNELS = new ConcurrentHashMap<>();
 
+    /**
+     * 重要
+     */
     private static final Map<Long, DefaultFuture> FUTURES = new ConcurrentHashMap<>();
 
     public static final Timer TIME_OUT_TIMER = new HashedWheelTimer(

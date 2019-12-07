@@ -44,6 +44,7 @@ public class HeaderExchangeClient implements ExchangeClient {
     private final Client client;
     private final ExchangeChannel channel;
 
+    // Netty 所提供的一个经典的时间轮定时器实现
     private static final HashedWheelTimer IDLE_CHECK_TIMER = new HashedWheelTimer(
             new NamedThreadFactory("dubbo-client-idleCheck", true), 1, TimeUnit.SECONDS, Constants.TICKS_PER_WHEEL);
     private HeartbeatTimerTask heartBeatTimerTask;

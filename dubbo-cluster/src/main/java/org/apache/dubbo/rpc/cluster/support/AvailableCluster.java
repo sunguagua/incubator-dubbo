@@ -28,7 +28,7 @@ import java.util.List;
 
 /**
  * AvailableCluster
- *
+ * 多注册中心集群策略
  */
 public class AvailableCluster implements Cluster {
 

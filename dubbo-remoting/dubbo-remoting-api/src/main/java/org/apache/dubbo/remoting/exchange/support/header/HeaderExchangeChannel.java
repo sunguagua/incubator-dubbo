@@ -35,6 +35,7 @@ import java.net.InetSocketAddress;
 
 /**
  * ExchangeReceiver
+ *
  */
 final class HeaderExchangeChannel implements ExchangeChannel {
 

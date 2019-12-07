@@ -52,6 +52,7 @@ public final class InternalThreadLocalMap {
 
     public static void remove() {
         Thread thread = Thread.currentThread();
+        // 若是InternalThread则设置为null，否则调用ThreadLocal的remove方法
         if (thread instanceof InternalThread) {
             ((InternalThread) thread).setThreadLocalMap(null);
         } else {
@@ -64,8 +65,10 @@ public final class InternalThreadLocalMap {
     }
 
     public static int nextVariableIndex() {
+        // 先返回值再加1，通过Atomic变量让该操作为原子操作
         int index = nextIndex.getAndIncrement();
         if (index < 0) {
+            // 溢出处理
             nextIndex.decrementAndGet();
             throw new IllegalStateException("Too many thread-local indexed variables");
         }
@@ -82,6 +85,7 @@ public final class InternalThreadLocalMap {
 
     public Object indexedVariable(int index) {
         Object[] lookup = indexedVariables;
+        // 大于 则 UNSET = new Object()
         return index < lookup.length ? lookup[index] : UNSET;
     }
 
@@ -95,6 +99,7 @@ public final class InternalThreadLocalMap {
             lookup[index] = value;
             return oldValue == UNSET;
         } else {
+            // index超限则扩容数组，并设置值
             expandIndexedVariableTableAndSet(index, value);
             return true;
         }
@@ -126,12 +131,15 @@ public final class InternalThreadLocalMap {
 
     private static Object[] newIndexedVariableTable() {
         Object[] array = new Object[32];
+        // 填充
         Arrays.fill(array, UNSET);
         return array;
     }
 
     private static InternalThreadLocalMap fastGet(InternalThread thread) {
+        // InternalThread 的 InternalThreadLocalMap
         InternalThreadLocalMap threadLocalMap = thread.threadLocalMap();
+        // 为空就创建一个 InternalThreadLocalMap 设置给 InternalThread
         if (threadLocalMap == null) {
             thread.setThreadLocalMap(threadLocalMap = new InternalThreadLocalMap());
         }
@@ -139,6 +147,7 @@ public final class InternalThreadLocalMap {
     }
 
     private static InternalThreadLocalMap slowGet() {
+        // InternalThreadLocalMap 类的 ThreadLocal
         ThreadLocal<InternalThreadLocalMap> slowThreadLocalMap = InternalThreadLocalMap.slowThreadLocalMap;
         InternalThreadLocalMap ret = slowThreadLocalMap.get();
         if (ret == null) {
@@ -148,9 +157,16 @@ public final class InternalThreadLocalMap {
         return ret;
     }
 
+    /**
+     * 扩容
+     *
+     * @param index
+     * @param value
+     */
     private void expandIndexedVariableTableAndSet(int index, Object value) {
         Object[] oldArray = indexedVariables;
         final int oldCapacity = oldArray.length;
+        // 扩容为原来 2的最小次幂
         int newCapacity = index;
         newCapacity |= newCapacity >>> 1;
         newCapacity |= newCapacity >>> 2;

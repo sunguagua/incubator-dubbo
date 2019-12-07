@@ -75,6 +75,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
         beanDefinition.setBeanClass(beanClass);
         beanDefinition.setLazyInit(false);
         String id = element.getAttribute("id");
+        // 没有 id 属性, 取 name
         if (StringUtils.isEmpty(id) && required) {
             String generatedBeanName = element.getAttribute("name");
             if (StringUtils.isEmpty(generatedBeanName)) {
@@ -97,9 +98,11 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
             if (parserContext.getRegistry().containsBeanDefinition(id)) {
                 throw new IllegalStateException("Duplicate spring bean id " + id);
             }
+            // 注册
             parserContext.getRegistry().registerBeanDefinition(id, beanDefinition);
             beanDefinition.getPropertyValues().addPropertyValue("id", id);
         }
+        // 如果是 ProtocolConfig
         if (ProtocolConfig.class.equals(beanClass)) {
             for (String name : parserContext.getRegistry().getBeanDefinitionNames()) {
                 BeanDefinition definition = parserContext.getRegistry().getBeanDefinition(name);
@@ -107,6 +110,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                 if (property != null) {
                     Object value = property.getValue();
                     if (value instanceof ProtocolConfig && id.equals(((ProtocolConfig) value).getName())) {
+                        //
                         definition.getPropertyValues().addPropertyValue("protocol", new RuntimeBeanReference(id));
                     }
                 }
@@ -127,8 +131,10 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
         }
         Set<String> props = new HashSet<>();
         ManagedMap parameters = null;
+        // 遍历具体配置对象的所有方法
         for (Method setter : beanClass.getMethods()) {
             String name = setter.getName();
+            // set 方法, public 修饰, 一个参数
             if (name.length() > 3 && name.startsWith("set")
                     && Modifier.isPublic(setter.getModifiers())
                     && setter.getParameterTypes().length == 1) {
@@ -139,6 +145,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                 // check the setter/getter whether match
                 Method getter = null;
                 try {
+                    // get 方法
                     getter = beanClass.getMethod("get" + name.substring(3), new Class<?>[0]);
                 } catch (NoSuchMethodException e) {
                     try {
@@ -148,6 +155,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                         // ApplicationAware, etc. They only have setter method, otherwise will cause the error log during application start up.
                     }
                 }
+                // 校验是否有对应的 get 或 is 前缀方法, 没有跳过
                 if (getter == null
                         || !Modifier.isPublic(getter.getModifiers())
                         || !type.equals(getter.getReturnType())) {
@@ -160,6 +168,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                 } else if ("arguments".equals(property)) {
                     parseArguments(id, element.getChildNodes(), beanDefinition, parserContext);
                 } else {
+                    // 属性值
                     String value = element.getAttribute(property);
                     if (value != null) {
                         value = value.trim();
@@ -209,6 +218,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                                     beanDefinition.getPropertyValues().addPropertyValue("oninvokeMethod", invokeRefMethod);
                                 } else {
                                     if ("ref".equals(property) && parserContext.getRegistry().containsBeanDefinition(value)) {
+                                        // 获取 ref
                                         BeanDefinition refBean = parserContext.getRegistry().getBeanDefinition(value);
                                         if (!refBean.isSingleton()) {
                                             throw new IllegalStateException("The exported service ref " + value + " must be singleton! Please set the " + value + " bean scope to singleton, eg: <bean id=\"" + value + "\" scope=\"singleton\" ...>");
@@ -228,6 +238,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
         for (int i = 0; i < len; i++) {
             Node node = attributes.item(i);
             String name = node.getLocalName();
+            // 排除已经解析的值
             if (!props.contains(name)) {
                 if (parameters == null) {
                     parameters = new ManagedMap();
@@ -312,6 +323,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                         if (parameters == null) {
                             parameters = new ManagedMap();
                         }
+                        // 属性
                         String key = ((Element) node).getAttribute("key");
                         String value = ((Element) node).getAttribute("value");
                         boolean hide = "true".equals(((Element) node).getAttribute("hide"));
@@ -337,6 +349,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                 if (node instanceof Element) {
                     Element element = (Element) node;
                     if ("method".equals(node.getNodeName()) || "method".equals(node.getLocalName())) {
+                        // method name属性
                         String methodName = element.getAttribute("name");
                         if (StringUtils.isEmpty(methodName)) {
                             throw new IllegalStateException("<dubbo:method> name attribute == null");
@@ -344,6 +357,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                         if (methods == null) {
                             methods = new ManagedList();
                         }
+                        // 解析
                         BeanDefinition methodBeanDefinition = parse(((Element) node),
                                 parserContext, MethodConfig.class, false);
                         String name = id + "." + methodName;

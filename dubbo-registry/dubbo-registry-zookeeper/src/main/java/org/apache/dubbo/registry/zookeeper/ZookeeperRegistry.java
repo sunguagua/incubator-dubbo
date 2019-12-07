@@ -56,6 +56,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     private final ConcurrentMap<URL, ConcurrentMap<NotifyListener, ChildListener>> zkListeners = new ConcurrentHashMap<>();
 
+    // dubbo 的 zkClient
     private final ZookeeperClient zkClient;
 
     public ZookeeperRegistry(URL url, ZookeeperTransporter zookeeperTransporter) {
@@ -63,11 +64,14 @@ public class ZookeeperRegistry extends FailbackRegistry {
         if (url.isAnyHost()) {
             throw new IllegalStateException("registry address == null");
         }
+        // 分组, 默认 dubbo
         String group = url.getParameter(Constants.GROUP_KEY, DEFAULT_ROOT);
         if (!group.startsWith(Constants.PATH_SEPARATOR)) {
             group = Constants.PATH_SEPARATOR + group;
         }
+        // 根路径
         this.root = group;
+        // 得到 zkClient
         zkClient = zookeeperTransporter.connect(url);
         zkClient.addStateListener(state -> {
             if (state == StateListener.RECONNECTED) {
@@ -116,7 +120,9 @@ public class ZookeeperRegistry extends FailbackRegistry {
     @Override
     public void doSubscribe(final URL url, final NotifyListener listener) {
         try {
+            // * 订阅所有数据, 主要给 dubbo-admin 用
             if (Constants.ANY_VALUE.equals(url.getServiceInterface())) {
+                // group
                 String root = toRootPath();
                 ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
                 if (listeners == null) {
@@ -125,11 +131,14 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 }
                 ChildListener zkListener = listeners.get(listener);
                 if (zkListener == null) {
+                    // 添加 ChildListener, 变更时执行
                     listeners.putIfAbsent(listener, (parentPath, currentChilds) -> {
+                        // 遍历子节点
                         for (String child : currentChilds) {
                             child = URL.decode(child);
                             if (!anyServices.contains(child)) {
                                 anyServices.add(child);
+                                // 订阅子节点
                                 subscribe(url.setPath(child).addParameters(Constants.INTERFACE_KEY, child,
                                         Constants.CHECK_KEY, String.valueOf(false)), listener);
                             }
@@ -140,6 +149,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 zkClient.create(root, false);
                 List<String> services = zkClient.addChildListener(root, zkListener);
                 if (CollectionUtils.isNotEmpty(services)) {
+                    // 遍历所有子节点进行订阅
                     for (String service : services) {
                         service = URL.decode(service);
                         anyServices.add(service);
@@ -149,6 +159,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 }
             } else {
                 List<URL> urls = new ArrayList<>();
+                // 遍历路径
                 for (String path : toCategoriesPath(url)) {
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
                     if (listeners == null) {
@@ -166,6 +177,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
+                // 回调 NotifyListener, 更新本地缓存信息
                 notify(url, listener, urls);
             }
         } catch (Throwable e) {
@@ -231,6 +243,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     private String[] toCategoriesPath(URL url) {
         String[] categories;
+        // url catatory 是 * ,则会订阅四种类型路径. 否则只会订阅 provider 路径
         if (Constants.ANY_VALUE.equals(url.getParameter(Constants.CATEGORY_KEY))) {
             categories = new String[]{Constants.PROVIDERS_CATEGORY, Constants.CONSUMERS_CATEGORY,
                     Constants.ROUTERS_CATEGORY, Constants.CONFIGURATORS_CATEGORY};

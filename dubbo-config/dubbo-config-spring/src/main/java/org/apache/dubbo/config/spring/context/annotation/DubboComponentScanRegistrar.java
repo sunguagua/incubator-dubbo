@@ -72,9 +72,11 @@ public class DubboComponentScanRegistrar implements ImportBeanDefinitionRegistra
     private void registerServiceAnnotationBeanPostProcessor(Set<String> packagesToScan, BeanDefinitionRegistry registry) {
 
         BeanDefinitionBuilder builder = rootBeanDefinition(ServiceAnnotationBeanPostProcessor.class);
+        // 构造函数参数
         builder.addConstructorArgValue(packagesToScan);
         builder.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
         AbstractBeanDefinition beanDefinition = builder.getBeanDefinition();
+        // 注册处理器
         BeanDefinitionReaderUtils.registerWithGeneratedName(beanDefinition, registry);
 
     }
@@ -95,8 +97,10 @@ public class DubboComponentScanRegistrar implements ImportBeanDefinitionRegistra
     private Set<String> getPackagesToScan(AnnotationMetadata metadata) {
         AnnotationAttributes attributes = AnnotationAttributes.fromMap(
                 metadata.getAnnotationAttributes(DubboComponentScan.class.getName()));
+        // 扫描的包
         String[] basePackages = attributes.getStringArray("basePackages");
         Class<?>[] basePackageClasses = attributes.getClassArray("basePackageClasses");
+        // 默认值
         String[] value = attributes.getStringArray("value");
         // Appends value array attributes
         Set<String> packagesToScan = new LinkedHashSet<String>(Arrays.asList(value));
@@ -104,6 +108,7 @@ public class DubboComponentScanRegistrar implements ImportBeanDefinitionRegistra
         for (Class<?> basePackageClass : basePackageClasses) {
             packagesToScan.add(ClassUtils.getPackageName(basePackageClass));
         }
+        // 如果没配置, 取..
         if (packagesToScan.isEmpty()) {
             return Collections.singleton(ClassUtils.getPackageName(metadata.getClassName()));
         }

@@ -105,9 +105,12 @@ public class HashedWheelTimer implements Timer {
     @SuppressWarnings({"unused", "FieldMayBeFinal"})
     private volatile int workerState;
 
+    //每个时间轮时间，纳秒
     private final long tickDuration;
     private final HashedWheelBucket[] wheel;
+    // 掩码，时间轮长度减一
     private final int mask;
+    // 1
     private final CountDownLatch startTimeInitialized = new CountDownLatch(1);
     private final Queue<HashedWheelTimeout> timeouts = new LinkedBlockingQueue<>();
     private final Queue<HashedWheelTimeout> cancelledTimeouts = new LinkedBlockingQueue<>();
@@ -248,6 +251,7 @@ public class HashedWheelTimer implements Timer {
                     "tickDuration: %d (expected: 0 < tickDuration in nanos < %d",
                     tickDuration, Long.MAX_VALUE / wheel.length));
         }
+        //work线程
         workerThread = threadFactory.newThread(worker);
 
         this.maxPendingTimeouts = maxPendingTimeouts;
@@ -271,6 +275,12 @@ public class HashedWheelTimer implements Timer {
         }
     }
 
+    /**
+     * 创建时间轮
+     *
+     * @param ticksPerWheel
+     * @return
+     */
     private static HashedWheelBucket[] createWheel(int ticksPerWheel) {
         if (ticksPerWheel <= 0) {
             throw new IllegalArgumentException(
@@ -289,6 +299,12 @@ public class HashedWheelTimer implements Timer {
         return wheel;
     }
 
+    /**
+     * 2 n次方
+     *
+     * @param ticksPerWheel
+     * @return
+     */
     private static int normalizeTicksPerWheel(int ticksPerWheel) {
         int normalizedTicksPerWheel = ticksPerWheel - 1;
         normalizedTicksPerWheel |= normalizedTicksPerWheel >>> 1;
@@ -428,7 +444,7 @@ public class HashedWheelTimer implements Timer {
 
         @Override
         public void run() {
-            // Initialize the startTime.
+            // 初始化开始时间.
             startTime = System.nanoTime();
             if (startTime == 0) {
                 // We use 0 as an indicator for the uninitialized value here, so make sure it's not 0 when initialized.
@@ -513,6 +529,7 @@ public class HashedWheelTimer implements Timer {
         /**
          * calculate goal nanoTime from startTime and current tick number,
          * then wait until that goal has been reached.
+         * 计算从开始时间的目标时间和当前tick数
          *
          * @return Long.MIN_VALUE if received a shutdown request,
          * current time otherwise (with Long.MIN_VALUE changed by +1)
@@ -521,6 +538,7 @@ public class HashedWheelTimer implements Timer {
             long deadline = tickDuration * (tick + 1);
 
             for (; ; ) {
+                // 经历的时间
                 final long currentTime = System.nanoTime() - startTime;
                 long sleepTimeMs = (deadline - currentTime + 999999) / 1000000;
 

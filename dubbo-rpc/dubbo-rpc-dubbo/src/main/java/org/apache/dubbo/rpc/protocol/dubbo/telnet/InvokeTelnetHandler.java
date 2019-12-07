@@ -39,6 +39,7 @@ import static org.apache.dubbo.common.utils.PojoUtils.realize;
 
 /**
  * InvokeTelnetHandler
+ *
  */
 @Activate
 @Help(parameter = "[service.]method(args) ", summary = "Invoke the service method.",

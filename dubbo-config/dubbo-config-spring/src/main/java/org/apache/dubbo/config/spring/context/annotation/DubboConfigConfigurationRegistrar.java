@@ -45,6 +45,7 @@ public class DubboConfigConfigurationRegistrar implements ImportBeanDefinitionRe
         boolean multiple = attributes.getBoolean("multiple");
 
         // Single Config Bindings
+        // 配置绑定
         registerBeans(registry, DubboConfigConfiguration.Single.class);
 
         if (multiple) { // Since 2.6.6 https://github.com/apache/incubator-dubbo/issues/3193

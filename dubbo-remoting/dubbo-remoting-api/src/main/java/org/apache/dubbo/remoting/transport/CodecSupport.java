@@ -62,6 +62,7 @@ public class CodecSupport {
     }
 
     public static Serialization getSerialization(URL url) {
+        // 默认 hession2 序列化协议
         return ExtensionLoader.getExtensionLoader(Serialization.class).getExtension(
                 url.getParameter(Constants.SERIALIZATION_KEY, Constants.DEFAULT_REMOTING_SERIALIZATION));
     }

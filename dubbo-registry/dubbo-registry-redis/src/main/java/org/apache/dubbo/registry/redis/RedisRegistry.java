@@ -179,6 +179,7 @@ public class RedisRegistry extends FailbackRegistry {
                             }
                         }
                     }
+                    // 如果是服务治理中心, 则还要清理过期的 key
                     if (admin) {
                         clean(jedis);
                     }
@@ -268,10 +269,12 @@ public class RedisRegistry extends FailbackRegistry {
         String expire = String.valueOf(System.currentTimeMillis() + expirePeriod);
         boolean success = false;
         RpcException exception = null;
+        // 遍历连接池中所有节点
         for (Map.Entry<String, JedisPool> entry : jedisPools.entrySet()) {
             JedisPool jedisPool = entry.getValue();
             try {
                 try (Jedis jedis = jedisPool.getResource()) {
+                    // 向 Redis 中注册, 并在通道中发布注册事件
                     jedis.hset(key, value, expire);
                     jedis.publish(key, Constants.REGISTER);
                     success = true;
@@ -478,6 +481,7 @@ public class RedisRegistry extends FailbackRegistry {
             if (logger.isInfoEnabled()) {
                 logger.info("redis event: " + key + " = " + msg);
             }
+            // 注册事件
             if (msg.equals(Constants.REGISTER)
                     || msg.equals(Constants.UNREGISTER)) {
                 try {
@@ -516,6 +520,9 @@ public class RedisRegistry extends FailbackRegistry {
 
     }
 
+    /**
+     * 后续注册中心上的信息变更通过 Notifier 线程订阅的通道推送事件来实现
+     */
     private class Notifier extends Thread {
 
         private final String service;
@@ -566,6 +573,7 @@ public class RedisRegistry extends FailbackRegistry {
                                 try {
                                     jedis = jedisPool.getResource();
                                     try {
+                                        // 以 * 结尾, 如服务治理中心, 订阅所有服务
                                         if (service.endsWith(Constants.ANY_VALUE)) {
                                             if (first) {
                                                 first = false;
@@ -575,10 +583,12 @@ public class RedisRegistry extends FailbackRegistry {
                                                         doNotify(jedis, s);
                                                     }
                                                 }
+                                                // 由于连接过程允许一定量的失败, 会做重置, 此处重置了计数器
                                                 resetSkip();
                                             }
                                             jedis.psubscribe(new NotifySub(jedisPool), service); // blocking
                                         } else {
+                                            // 如不以 * 结尾, 如服务提供者或消费者
                                             if (first) {
                                                 first = false;
                                                 doNotify(jedis, service);

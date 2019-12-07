@@ -142,6 +142,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     /**
      * The provider configuration
+     * provider 配置
      */
     private ProviderConfig provider;
 
@@ -262,6 +263,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     public void checkAndUpdateSubConfigs() {
         // Use default configs defined explicitly on global configs
+        //
         completeCompoundConfigs();
         // Config Center should always being started first.
         startConfigCenter();
@@ -327,6 +329,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     public synchronized void export() {
         checkAndUpdateSubConfigs();
 
+        // provider export 属性
         if (!shouldExport()) {
             return;
         }
@@ -364,6 +367,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (unexported) {
             throw new IllegalStateException("The service " + interfaceClass.getName() + " has already unexported!");
         }
+        // 防止重复 export
         if (exported) {
             return;
         }
@@ -409,7 +413,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        // 获取当前服务对应的注册中心实例
         List<URL> registryURLs = loadRegistries(true);
+        // 每个协议注册元数据都会写入多个注册中心
         for (ProtocolConfig protocolConfig : protocols) {
             String pathKey = URL.buildKey(getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
             ProviderModel providerModel = new ProviderModel(pathKey, ref, interfaceClass);
@@ -530,7 +536,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (!Constants.SCOPE_NONE.equalsIgnoreCase(scope)) {
 
             // export to local if the config is not remote (export to remote only when config is remote)
+            // 本地暴露
             if (!Constants.SCOPE_REMOTE.equalsIgnoreCase(scope)) {
+                // 重要
                 exportLocal(url);
             }
             // export to remote if the config is not local (export to local only when config is local)
@@ -555,7 +563,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                             registryURL = registryURL.addParameter(Constants.PROXY_KEY, proxy);
                         }
 
+                        // 通过动态代理转换成 Invoker
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
+                        //
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
@@ -589,6 +599,10 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     .setHost(LOCALHOST_VALUE)
                     .setPort(0)
                     .build();
+            // Protocol$Adaptive
+            // ProxyFactory$Adaptive
+            // local example: injvm://127.0.0.1/com.dubbo.service.async.AsyncService?anyhost=true&application=dubbo-demo-provider&bean.name=com.dubbo.service.async.AsyncService&bind.ip=192.168.199.157&bind.port=20002&dubbo=2.0.2&generic=false&interface=com.dubbo.service.async.AsyncService&methods=sayHello,goodbye,sayHello2&pid=51018&release=2.7.0&revision=1.0-SNAPSHOT&sayHello2.async=true&side=provider&timestamp=1565186435759
+            // QosProtocolWrapper -> ProtocolListenerWrapper -> ProtocolFilterWrapper
             Exporter<?> exporter = protocol.export(
                     proxyFactory.getInvoker(ref, (Class) interfaceClass, local));
             exporters.add(exporter);
@@ -747,6 +761,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     private void completeCompoundConfigs() {
+        // 配置覆盖
         if (provider != null) {
             if (application == null) {
                 setApplication(provider.getApplication());

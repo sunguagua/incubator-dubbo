@@ -39,6 +39,10 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * ExchangeReceiver
+ * 更新发送和读取请求时间戳
+ * 判断请求格式或编辑码格式是否有错, 并相应客户端失败的具体原因
+ * 处理 Request 请求和 Response 请求
+ * 支持 Telnet 调用
  */
 public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
@@ -59,6 +63,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
     static void handleResponse(Channel channel, Response response) throws RemotingException {
         if (response != null && !response.isHeartbeat()) {
+            // 唤醒阻塞的线程并通知结果
             DefaultFuture.received(channel, response);
         }
     }
@@ -86,6 +91,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
             if (data == null) {
                 msg = null;
             } else if (data instanceof Throwable) {
+                // 处理请求格式不正确(编解码), 并把异常转换成字符串返回
                 msg = StringUtils.toString((Throwable) data);
             } else {
                 msg = data.toString();
@@ -100,6 +106,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
         Object msg = req.getData();
         try {
             // handle data.
+            // 调用 DubboProtocol#reply, 触发方法调用
             CompletableFuture<Object> future = handler.reply(channel, msg);
             if (future.isDone()) {
                 res.setStatus(Response.OK);
@@ -187,6 +194,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
+        // 更新事件时间戳, 心跳处理用
         channel.setAttribute(KEY_READ_TIMESTAMP, System.currentTimeMillis());
         final ExchangeChannel exchangeChannel = HeaderExchangeChannel.getOrAddChannel(channel);
         try {
@@ -194,21 +202,26 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
                 // handle request.
                 Request request = (Request) message;
                 if (request.isEvent()) {
+                    // 处理 readonly 事件, 在 channel 中打标
                     handlerEvent(channel, request);
                 } else {
                     if (request.isTwoWay()) {
+                        // 处理方法调用并返回给客户端
                         handleRequest(exchangeChannel, request);
                     } else {
                         handler.received(exchangeChannel, request.getData());
                     }
                 }
             } else if (message instanceof Response) {
+                // 接收相应
                 handleResponse(channel, (Response) message);
             } else if (message instanceof String) {
+                // 客户端不支持 Telnet 调用
                 if (isClientSide(channel)) {
                     Exception e = new Exception("Dubbo client can not supported string message: " + message + " in channel: " + channel + ", url: " + channel.getUrl());
                     logger.error(e.getMessage(), e);
                 } else {
+                    // 触发 Telnet 调用, 并返回
                     String echo = handler.telnet(channel, (String) message);
                     if (echo != null && echo.length() > 0) {
                         channel.send(echo);

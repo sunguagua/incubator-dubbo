@@ -112,6 +112,7 @@ public class Environment {
      * @return
      */
     public CompositeConfiguration getConfiguration(String prefix, String id) {
+        // 组合配置
         CompositeConfiguration compositeConfiguration = new CompositeConfiguration();
         // Config center has the highest priority
         compositeConfiguration.addConfiguration(this.getSystemConfig(prefix, id));

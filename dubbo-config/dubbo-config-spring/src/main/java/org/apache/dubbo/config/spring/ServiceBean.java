@@ -56,6 +56,7 @@ import static org.apache.dubbo.config.spring.util.BeanFactoryUtils.addApplicatio
  * ServiceFactoryBean
  *
  * @export
+ *
  */
 public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean, DisposableBean,
         ApplicationContextAware, ApplicationListener<ContextRefreshedEvent>, BeanNameAware,
@@ -105,12 +106,17 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         return service;
     }
 
+    /**
+     * ApplicationListener
+     * @param event
+     */
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
         if (!isExported() && !isUnexported()) {
             if (logger.isInfoEnabled()) {
                 logger.info("The service ready on spring started. service: " + getInterface());
             }
+            // 暴露
             export();
         }
     }

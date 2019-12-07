@@ -77,6 +77,7 @@ public class DecodeableRpcResult extends RpcResult implements Codec, Decodeable 
 
         byte flag = in.readByte();
         switch (flag) {
+            // 返回结果标记为 null 值
             case DubboCodec.RESPONSE_NULL_VALUE:
                 break;
             case DubboCodec.RESPONSE_VALUE:
@@ -124,6 +125,7 @@ public class DecodeableRpcResult extends RpcResult implements Codec, Decodeable 
 
     private void handleValue(ObjectInput in) throws IOException {
         try {
+            // 读取方法调用返回值类型
             Type[] returnTypes = RpcUtils.getReturnTypes(invocation);
             Object value = null;
             if (ArrayUtils.isEmpty(returnTypes)) {
@@ -131,6 +133,7 @@ public class DecodeableRpcResult extends RpcResult implements Codec, Decodeable 
             } else if (returnTypes.length == 1) {
                 value = in.readObject((Class<?>) returnTypes[0]);
             } else {
+                // 如果返回值包含泛型, 则调用反序列化解析接口
                 value = in.readObject((Class<?>) returnTypes[0], returnTypes[1]);
             }
             setValue(value);

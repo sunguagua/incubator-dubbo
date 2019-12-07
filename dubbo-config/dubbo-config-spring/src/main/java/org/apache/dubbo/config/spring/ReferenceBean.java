@@ -46,6 +46,7 @@ import java.util.Map;
 
 /**
  * ReferenceFactoryBean
+ *
  */
 public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean, ApplicationContextAware, InitializingBean, DisposableBean {
 
@@ -234,6 +235,7 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
         }
 
         if (shouldInit()) {
+            // 入口, 重要
             getObject();
         }
     }

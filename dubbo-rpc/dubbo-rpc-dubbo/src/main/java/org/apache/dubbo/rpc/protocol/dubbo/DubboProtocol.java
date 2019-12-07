@@ -84,6 +84,7 @@ public class DubboProtocol extends AbstractProtocol {
     /**
      * consumer side export a stub service for dispatching event
      * servicekey-stubmethods
+     *
      */
     private final ConcurrentMap<String, String> stubServiceMethodsMap = new ConcurrentHashMap<>();
 
@@ -265,8 +266,10 @@ public class DubboProtocol extends AbstractProtocol {
         URL url = invoker.getUrl();
 
         // export service.
+        // 根据服务分组,版本,接口和端口构造 key
         String key = serviceKey(url);
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
+        // 把 exporter 存储到单例 DubboProtocol 中
         exporterMap.put(key, exporter);
 
         //export an stub service for dispatching event
@@ -285,6 +288,7 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        // 服务端初次暴露会创建监听服务器
         openServer(url);
         optimizeSerialization(url);
 
@@ -302,6 +306,7 @@ public class DubboProtocol extends AbstractProtocol {
                 synchronized (this) {
                     server = serverMap.get(key);
                     if (server == null) {
+                        // 重要
                         serverMap.put(key, createServer(url));
                     }
                 }
@@ -328,6 +333,7 @@ public class DubboProtocol extends AbstractProtocol {
 
         ExchangeServer server;
         try {
+            // 创建 NettyServer 并且初始化 Handler
             server = Exchangers.bind(url, requestHandler);
         } catch (RemotingException e) {
             throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);
@@ -549,6 +555,7 @@ public class DubboProtocol extends AbstractProtocol {
 
     /**
      * Create new connection
+     * 初始化客户端连接操作
      *
      * @param url
      */

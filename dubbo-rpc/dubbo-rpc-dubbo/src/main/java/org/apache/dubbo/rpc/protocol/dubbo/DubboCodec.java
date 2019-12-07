@@ -43,6 +43,7 @@ import static org.apache.dubbo.rpc.protocol.dubbo.CallbackServiceCodec.encodeInv
 
 /**
  * Dubbo codec.
+ *
  */
 public class DubboCodec extends ExchangeCodec {
 
@@ -63,6 +64,7 @@ public class DubboCodec extends ExchangeCodec {
         byte flag = header[2], proto = (byte) (flag & SERIALIZATION_MASK);
         // get request id.
         long id = Bytes.bytes2long(header, 4);
+        // 响应
         if ((flag & FLAG_REQUEST) == 0) {
             // decode response.
             Response res = new Response(id);
@@ -108,7 +110,9 @@ public class DubboCodec extends ExchangeCodec {
             }
             return res;
         } else {
+            // 请求
             // decode request.
+            // 请求标志位被设置, 创建 request 对象
             Request req = new Request(id);
             req.setVersion(Version.getProtocolVersion());
             req.setTwoWay((flag & FLAG_TWOWAY) != 0);
@@ -127,20 +131,24 @@ public class DubboCodec extends ExchangeCodec {
                     if (channel.getUrl().getParameter(
                             Constants.DECODE_IN_IO_THREAD_KEY,
                             Constants.DEFAULT_DECODE_IN_IO_THREAD)) {
+                        // 在 I/O 线程中直接解码
                         inv = new DecodeableRpcInvocation(channel, req, is, proto);
                         inv.decode();
                     } else {
+                        // 延迟解码, 交给 Dubbo 业务线程池解码
                         inv = new DecodeableRpcInvocation(channel, req,
                                 new UnsafeByteArrayInputStream(readMessageData(is)), proto);
                     }
                     data = inv;
                 }
+                // 将 RpcInvacation 作为 Request 的数据域
                 req.setData(data);
             } catch (Throwable t) {
                 if (log.isWarnEnabled()) {
                     log.warn("Decode request failed: " + t.getMessage(), t);
                 }
                 // bad request
+                // 解码失败, 先做标记并存储异常
                 req.setBroken(true);
                 req.setData(t);
             }
@@ -172,18 +180,25 @@ public class DubboCodec extends ExchangeCodec {
     protected void encodeRequestData(Channel channel, ObjectOutput out, Object data, String version) throws IOException {
         RpcInvocation inv = (RpcInvocation) data;
 
+        // 写入框架版本
         out.writeUTF(version);
+        // 写入调用接口
         out.writeUTF(inv.getAttachment(Constants.PATH_KEY));
+        // 写入接口指定的版本, 默认 0.0.0
         out.writeUTF(inv.getAttachment(Constants.VERSION_KEY));
 
+        // 写入方法名称
         out.writeUTF(inv.getMethodName());
+        // 写入方法参数类型
         out.writeUTF(ReflectUtils.getDesc(inv.getParameterTypes()));
         Object[] args = inv.getArguments();
+        // 写入方法参数值
         if (args != null) {
             for (int i = 0; i < args.length; i++) {
                 out.writeObject(encodeInvocationArgument(channel, inv, i));
             }
         }
+        // 写入隐式参数
         out.writeObject(RpcUtils.getNecessaryAttachments(inv));
     }
 
@@ -194,20 +209,24 @@ public class DubboCodec extends ExchangeCodec {
         boolean attach = Version.isSupportResponseAttachment(version);
         Throwable th = result.getException();
         if (th == null) {
+            // 提取正常返回结果
             Object ret = result.getValue();
             if (ret == null) {
+                // 在编码结果前, 先写一个字节标志
                 out.writeByte(attach ? RESPONSE_NULL_VALUE_WITH_ATTACHMENTS : RESPONSE_NULL_VALUE);
             } else {
                 out.writeByte(attach ? RESPONSE_VALUE_WITH_ATTACHMENTS : RESPONSE_VALUE);
                 out.writeObject(ret);
             }
         } else {
+            // 标记调用抛出异常, 并序列化异常
             out.writeByte(attach ? RESPONSE_WITH_EXCEPTION_WITH_ATTACHMENTS : RESPONSE_WITH_EXCEPTION);
             out.writeObject(th);
         }
 
         if (attach) {
             // returns current version of Response to consumer side.
+            // 记录服务端 dubbo 版本, 并返回服务端隐式参数
             result.getAttachments().put(Constants.DUBBO_VERSION_KEY, Version.getProtocolVersion());
             out.writeObject(result.getAttachments());
         }

@@ -73,7 +73,7 @@ public abstract class AbstractRegistry implements Registry {
     private final ConcurrentMap<URL, Set<NotifyListener>> subscribed = new ConcurrentHashMap<>();
     private final ConcurrentMap<URL, Map<String, List<URL>>> notified = new ConcurrentHashMap<>();
     private URL registryUrl;
-    // Local disk cache file
+    // Local disk cache file, 磁盘文件服务缓存对象
     private File file;
 
     public AbstractRegistry(URL url) {
@@ -183,6 +183,9 @@ public abstract class AbstractRegistry implements Registry {
         }
     }
 
+    /**
+     * properties 初始化
+     */
     private void loadProperties() {
         if (file != null && file.exists()) {
             InputStream in = null;
@@ -399,6 +402,7 @@ public abstract class AbstractRegistry implements Registry {
             listener.notify(categoryList);
             // We will update our cache file after each notification.
             // When our Registry has a subscribe failure due to network jitter, we can return at least the existing cache URL.
+            // 缓存保存与更新
             saveProperties(url);
         }
     }
@@ -423,6 +427,7 @@ public abstract class AbstractRegistry implements Registry {
             }
             properties.setProperty(url.getServiceKey(), buf.toString());
             long version = lastCacheChanged.incrementAndGet();
+            // 同步
             if (syncSaveFile) {
                 doSaveProperties(version);
             } else {

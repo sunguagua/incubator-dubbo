@@ -26,6 +26,7 @@ import java.util.List;
 
 /**
  * AdaptiveExtensionFactory
+ *
  */
 @Adaptive
 public class AdaptiveExtensionFactory implements ExtensionFactory {
@@ -43,6 +44,7 @@ public class AdaptiveExtensionFactory implements ExtensionFactory {
 
     @Override
     public <T> T getExtension(Class<T> type, String name) {
+        // 所有具体工厂方法实现
         for (ExtensionFactory factory : factories) {
             T extension = factory.getExtension(type, name);
             if (extension != null) {

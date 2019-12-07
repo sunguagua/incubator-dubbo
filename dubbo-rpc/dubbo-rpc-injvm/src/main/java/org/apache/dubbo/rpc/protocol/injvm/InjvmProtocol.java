@@ -32,6 +32,7 @@ import java.util.Map;
 
 /**
  * InjvmProtocol
+ *
  */
 public class InjvmProtocol extends AbstractProtocol implements Protocol {
 
